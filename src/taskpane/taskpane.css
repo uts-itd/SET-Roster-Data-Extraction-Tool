@@ -78,3 +78,7 @@
 b {
     font-weight: bold;
 }
+
+header>h1 {
+	text-align: center;
+}
