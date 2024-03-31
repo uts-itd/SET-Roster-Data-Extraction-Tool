@@ -11,3 +11,11 @@ Office.onReady((info) => {
   }
 });
 
+async function tryCatch(callback) {
+	try {
+		await callback();
+	} catch (error) {
+		// TODO: display error in UI.
+		console.error(error);
+	}
+}
