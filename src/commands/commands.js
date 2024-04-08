@@ -55,13 +55,21 @@ async function createRosterDataTable() {
 	});	
 }
 
-async function extractData() {
+async function extractData(args) {
 	await Excel.run(async (context) => {
 		if (await rosterDataSheetExists(context) === false)
 			await createRosterDataSheet();
 
 		if (await rosterDataTableExists(context) === false)
 			await createRosterDataTable();
+
+		const rosterDataTable = context.workbook.tables.getItem('rosterData');
+		const rosterDataTableRows = rosterDataTable.rows;
+		rosterDataTableRows.load('items/values');
+
+		await context.sync();
+
+		rosterDataTableRows.deleteRows(rosterDataTable.rows.items);
 
 		const rosterTables = context.workbook.worksheets.getItem('Roster').tables;
 
@@ -80,14 +88,13 @@ async function extractData() {
 			rosterData = rosterData.concat(await extractRosterData(context, table));
 		}
 
-		const rosterDataTable = context.workbook.tables.getItem('rosterData');
-
 		rosterDataTable.rows.add(null, rosterData);
-
 
 		// format table
 		rosterDataTable.getRange().format.autofitColumns();
 		rosterDataTable.columns.getItem('Date').getDataBodyRange().numberFormat = 'dd/mm/yyyy';
+
+		args.completed();
 	})
 
 	/*
