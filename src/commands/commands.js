@@ -308,7 +308,7 @@ async function extractData() {
 		
 		await context.sync();
 		
-		if (tables.items.find(table => table.name === "roster data"))
+		if (tables.items.find(table => table.name === "rosterData"))
 			return true;
 		
 		return false;
