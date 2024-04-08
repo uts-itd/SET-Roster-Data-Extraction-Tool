@@ -33,6 +33,23 @@
                   <bt:Image size="32" resid="Icon.32x32"/>
                   <bt:Image size="80" resid="Icon.80x80"/>
                 </Icon>
+
+				<Control xsi:type="Button" id="ExtractDataButton">
+					<Label resid="ExtractButton.Label"/>
+					<Supertip>
+						<Title resid="ExtractButton.Label"/>
+						<Description resid="ExtractButton.Tooltip"/>
+					</Supertip>
+					<Icon>
+						<bt:Image size="16" resid="Icon.16x16"/>
+						<bt:Image size="32" resid="Icon.32x32"/>
+						<bt:Image size="80" resid="Icon.80x80"/>
+                  	</Icon>
+					<Action xsi:type="ExecuteFunction">
+						<FunctionName>extractData</FunctionName>
+					</Action>
+				</Control>
+
                 <Control xsi:type="Button" id="AboutButton">
                   <Label resid="AboutButton.Label"/>
                   <Supertip>
@@ -57,9 +74,9 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16x16" DefaultValue="https://localhost:3000/assets/icon-16.png"/>
-        <bt:Image id="Icon.32x32" DefaultValue="https://localhost:3000/assets/icon-32.png"/>
-        <bt:Image id="Icon.80x80" DefaultValue="https://localhost:3000/assets/icon-80.png"/>
+        <bt:Image id="Icon.16x16" DefaultValue="https://localhost:3000/assets/UTS_logo_web-16.png"/>
+        <bt:Image id="Icon.32x32" DefaultValue="https://localhost:3000/assets/UTS_logo_web-32.png"/>
+        <bt:Image id="Icon.80x80" DefaultValue="https://localhost:3000/assets/UTS_logo_web-80.png"/>
       </bt:Images>
       <bt:Urls>
         <bt:Url id="SRDET.Url" DefaultValue="https://localhost:3000/commands.html"/>
@@ -68,9 +85,11 @@
       <bt:ShortStrings>
         <bt:String id="SRDET.Label" DefaultValue="SET Roster Data Extraction Tool"/>
         <bt:String id="AboutButton.Label" DefaultValue="About"/>
+		<bt:String id="ExtractButton.Label" DefaultValue="Extract Data"/>
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="AboutButton.Tooltip" DefaultValue="About the SET Roster Data Extraction Tool"/>
+		<bt:String id="ExtractButton.Tooltip" DefaultValue="Extract Data from a SET Roster"/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>
