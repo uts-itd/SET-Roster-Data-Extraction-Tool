@@ -48,18 +48,12 @@ async function extractData() {
 		if (await rosterDataTableExists(context) === false)
 			await createRosterDataTable();
 
-		// Extract list of service points from roster sheet
-		//let servicePoints = await extractServicePoints(context);
-
-		// Extract roster data
-		const rosterSheet = context.workbook.worksheets.getItem('Roster');
-		const rosterTables = rosterSheet.tables;
+		const rosterTables = context.workbook.worksheets.getItem('Roster').tables;
 
 		rosterTables.load('items/name');
 		await context.sync();
 
-		const tableNames = [];
-		rosterTables.items.forEach(table => tableNames.push(table.name));
+		const tableNames = rosterTables.items.map(table => table.name);
 
 		// Table format = Name, Service Point, Date, Start, End, Time, OT, Value, Address
 		let rosterData = [];
@@ -71,12 +65,14 @@ async function extractData() {
 			rosterData = rosterData.concat(await extractRosterData(context, table));
 		}
 
-		let rosterDataTable = context.workbook.tables.getItem('rosterData');
-		await context.sync();
+		const rosterDataTable = context.workbook.tables.getItem('rosterData');
 
 		rosterDataTable.rows.add(null, rosterData);
 
-		await context.sync();
+
+		// format table
+		rosterDataTable.getRange().format.autofitColumns();
+		rosterDataTable.columns.getItem('Date').getDataBodyRange().numberFormat = 'dd/mm/yyyy';
 	})
 
 	/*
@@ -84,13 +80,100 @@ async function extractData() {
 	 * ----------------
 	 */
 
-	// Converts Excel Date serial number to Date object
+	// Extracts roster data from a single table (i.e. day)
+	async function extractRosterData(context, table) {
+		table.rows.load('items/values');
+		await context.sync();
+
+		const rows = table.rows.items;
+		const rosterData = [];
+		const date = await getDate(context, table);
+		let address = '';
+
+		const STARTTIMESEMIPHORE = 'from';
+		const ENDTIMESEMIPHORE = 'til';
+		
+		rows.forEach(row => {
+			const servicePoint = row.values[0][0];
+
+			for (let colIndex = 2; colIndex < 14; colIndex++) {
+				const cellValue = row.values[0][colIndex];
+
+				if (cellValue !== '') {
+					// Get name
+					const name = extractName(cellValue);
+
+					// Get start and end times
+					const timeArr = getTime(getTimeString(colIndex), cellValue);
+					const startTime = timeArr[0];
+					const endTime = timeArr[1];
+
+					// get Time
+					const time = endTime > startTime ? endTime - startTime : endTime + 12 - startTime;
+					
+					// get OT
+					const dateObj = excelDateToJSDate(date);
+					let OT = '';
+
+					if (extractOT(cellValue) === 'OT' || dateObj.getDay() == 6 || dateObj.getDay() == 7)
+						OT = 'OT';
+
+					const value = cellValue;
+
+					rosterData.push([name, servicePoint, date, startTime, endTime, time, OT, value, address]);
+				}
+			}
+		});
+
+		return rosterData;
+	}
+
+	// Converts Excel date serial number to Date object
 	function excelDateToJSDate(serial) {
-		let utc_days = Math.floor(serial - 25569);
-		let utc_value = utc_days * 86400;
-		let date_info = new Date(utc_value * 1000);
+		const utc_days = Math.floor(serial - 25569);
+		const utc_value = utc_days * 86400;
+		const date_info = new Date(utc_value * 1000);
 
 		return date_info;
+	}
+
+	// Gets the date value of the rostered day from the date row above the header row of the table
+	async function getDate(context, table) {
+		const dateRange = table.getHeaderRowRange().getOffsetRange(-1, 0);
+
+		dateRange.load('values');
+		await context.sync();
+	
+		return dateRange.values[0][0];
+	}
+
+	// Gets the start and end time from the timeString or cellValue if time is present
+	function getTime(timeString, cellValue) {
+		const STARTSEMIPHORE = 'from';
+		const ENDSEMIPHORE = 'til';
+		const timeStringArr = timeString.split('-');
+
+		// Set start and end time based of column header (timeString)
+		let startTime = timeStringArr[0].replace(STARTSEMIPHORE, '').trim();
+		let endTime = timeStringArr[1].replace(ENDSEMIPHORE, '').trim();
+
+		// Checks if there are any time override values in the cells (e.g. John Doe (from 9.30)
+		const timeStringOverride = extractTimeString(cellValue);
+		
+		if (timeStringOverride !== null) {
+			const timeStringOverrideArr = timeStringOverride.split('-');
+
+			// [from 9.30, til 3.30], [from 9.30], [til 3.30]
+			timeStringOverrideArr.forEach(time => {
+				if (time.includes(STARTSEMIPHORE))
+					startTime = convertTime(time.replace(STARTSEMIPHORE, '').trim());
+
+				if (time.includes(ENDSEMIPHORE))
+					endTime = convertTime(time.replace(ENDSEMIPHORE, '').trim());
+			});
+		}
+
+		return [+startTime, +endTime];	
 	}
 
 	// Extracts the staff name from the range
@@ -190,93 +273,6 @@ async function extractData() {
 		let minutes = timeStringArr[1] / 60;
 
 		return hour + minutes;
-	}
-
-	// Extracts roster data from a single table (i.e. day)
-	async function extractRosterData(context, table) {
-		let rows = table.rows.load('items/values');
-		let dateRange = table.getHeaderRowRange().getOffsetRange(-1,0);
-
-		dateRange.load('values');
-		await context.sync();
-		
-		let numberOfRows = rows.items.length;
-		let rosterData = [];
-
-		let name = '';
-		let servicePoint = '';
-		let date = excelDateToJSDate(dateRange.values[0][0]);
-		let startTime = '';
-		let endTime = '';
-		let time = '';
-		let OT = '';
-		let value = '';
-		let address = '';
-		
-		const STARTTIMESEMIPHORE = 'from';
-		const ENDTIMESEMIPHORE = 'til';
-		
-		// Iterate through the rows
-		for (let rowIndex = 0; rowIndex < numberOfRows; rowIndex++) {
-			// Get Service Point
-			servicePoint = rows.items[rowIndex].values[0][0];
-
-			for (let colIndex = 2; colIndex < 14; colIndex++) {
-				let cellValue = rows.items[rowIndex].values[0][colIndex];
-
-				if (cellValue !== '') {
-					// Get name
-					name = extractName(cellValue);
-
-					// Get start and end times
-					let timeString = getTimeString(colIndex);
-					let timeStringArr = timeString.split('-');
-					
-					startTime = timeStringArr[0].replace(STARTTIMESEMIPHORE, '').trim();
-					endTime = timeStringArr[1].replace(ENDTIMESEMIPHORE, '').trim();
-
-					timeStringOverride = extractTimeString(cellValue);
-
-					if (timeStringOverride !== null)
-						timeString = timeStringOverride;
-
-					if (isTimeRange(timeString)) {
-						let timeStringArr = timeString.split("-");
-
-						startTime = convertTime(timeStringArr[0].replace(STARTTIMESEMIPHORE,'').trim());
-						endTime = convertTime(timeStringArr[1].replace(ENDTIMESEMIPHORE, '').trim());
-
-					} else {
-						if (timeString.includes(STARTTIMESEMIPHORE))
-							startTime = convertTime(timeString.replace(STARTTIMESEMIPHORE, '').trim());
-
-						if (timeString.includes(ENDTIMESEMIPHORE))
-							endTime = convertTime(timeString.replace(ENDTIMESEMIPHORE, '').trim());
-					}
-
-					// get Time
-					if (endTime > startTime)
-						time = endTime - startTime;
-					else
-						time = endTime + 12 - startTime;
-					
-					// get OT
-					if (extractOT(cellValue)) {
-						OT = 'OT';
-					}
-
-					if (date.getDay() == 6 || 
-						date.getDay() == 7)
-						OT = 'OT';
-
-					value = cellValue;
-
-					rosterData.push([name, servicePoint, date, startTime, endTime, time, OT, value, address]);
-				}
-			}
-		};
-
-		return rosterData;
 	}
 
 	async function rosterDataSheetExists(context) {
