@@ -7,9 +7,16 @@
 
 Office.onReady((info) => {
 	if (info.host === Office.HostType.Excel) {
+		document.querySelector('.author-text>a').addEventListener('click', openLink);
 		document.getElementById("app-body").style.display = "flex";
 	}
 });
+
+function openLink() {
+	const url = 'https://github.com/kenyachan/';
+	
+	window.open(url);
+}
 
 async function tryCatch(callback) {
 	try {
