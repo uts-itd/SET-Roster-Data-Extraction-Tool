@@ -76,7 +76,7 @@ async function extractData(args) {
 		rosterTables.load('items/name');
 		await context.sync();
 
-		const tableNames = rosterTables.items.map(table => table.name);
+		const tableNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 		// Table format = Name, Service Point, Date, Start, End, Time, OT, Value, Address
 		let rosterData = [];
