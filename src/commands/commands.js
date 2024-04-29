@@ -29,64 +29,39 @@ function action(event) {
 }
 
 // My SRDET stuff here:
-
-async function createRosterDataSheet() {
-	await Excel.run(async (context) => {
-		const wSheetName = 'Roster Data';
-		const worksheet = context.workbook.worksheets.add(wSheetName);
-
-		worksheet.activate();
-
-		await context.sync();
-	});
-}
-
-async function createRosterDataTable() {
-	await Excel.run(async (context) => {
-		const rosterDataSheet = context.workbook.worksheets.getItem("Roster Data");
-		
-		const dataTable = rosterDataSheet.tables.add("A1:I1", true);
-		dataTable.name = "rosterData";
-
-		dataTable.getHeaderRowRange().values =	
-			[["Name", "Service Point", "Date", "Start", "End", "Time", "OT", "Value", "Address"]];
-
-		await context.sync();
-	});	
-}
-
 async function extractData(args) {
 	await Excel.run(async (context) => {
-		if (await rosterDataSheetExists(context) === false)
-			await createRosterDataSheet();
+		const names = context.workbook.names;
+		const tables = context.workbook.tables;
+		const sheets = context.workbook.worksheets;
 
-		if (await rosterDataTableExists(context) === false)
-			await createRosterDataTable();
-
-		const rosterDataTable = context.workbook.tables.getItem('rosterData');
-		const rosterDataTableRows = rosterDataTable.rows;
-		rosterDataTableRows.load('items/values');
+		context.workbook.load(
+			'worksheets/items/name' + 
+			', tables/items/rows/items/values' +
+			', tables/items/name' +
+			', names/items/arrayValues/values' +
+			', names/items/name'
+		);
 
 		await context.sync();
 
-		rosterDataTableRows.deleteRows(rosterDataTable.rows.items);
+		// create Roster Data Sheet if it doesn't exist
+		createRosterDataSheet(sheets).activate();
+		// create rosterData table if it doesn't exist
+		const rosterDataTable = createRosterDataTable(tables);
 
-		const rosterTables = context.workbook.worksheets.getItem('Roster').tables;
-
-		rosterTables.load('items/name');
-		await context.sync();
+		rosterDataTable.rows.deleteRows(rosterDataTable.rows.items);
 
 		const tableNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-		// Table format = Name, Service Point, Date, Start, End, Time, OT, Value, Address
 		let rosterData = [];
 
-		// Iterate through the tables
-		for (const tableName of tableNames) {
-			const table = rosterTables.getItem(tableName);
-
-			rosterData = rosterData.concat(await extractRosterData(context, table));
-		}
+		tableNames.forEach(tableName => {
+			const rosterTable = tables.items.find(item => item.name === tableName);
+			const date = names.items.find(item => item.name === `${tableName}_Date`).arrayValues.values[0][0];
+			
+			rosterData = rosterData.concat(extractRosterData(rosterTable, date));
+		});
 
 		rosterDataTable.rows.add(null, rosterData);
 
@@ -95,83 +70,145 @@ async function extractData(args) {
 		rosterDataTable.columns.getItem('Date').getDataBodyRange().numberFormat = 'dd/mm/yyyy';
 
 		args.completed();
-	})
+	});
+}
 
-	/*
-	 * HELPER FUNCTIONS
-	 * ----------------
-	 */
+// Create the table "rosterTable"
+function createRosterDataTable(tables) {
+	const tableName = 'rosterData';
+	let dataTable = tables.items.find(item => item.name === tableName);
 
-	// Extracts roster data from a single table (i.e. day)
-	async function extractRosterData(context, table) {
-		table.rows.load('items/values');
-		await context.sync();
+	if (dataTable === undefined) {
+		dataTable = tables.add(`'Roster Data'!A1:I1`, true);
 
-		const rows = table.rows.items;
-		const rosterData = [];
-		const date = await getDate(context, table);
-		let address = '';
-
-		const STARTTIMESEMIPHORE = 'from';
-		const ENDTIMESEMIPHORE = 'til';
-		
-		rows.forEach(row => {
-			const servicePoint = row.values[0][0];
-
-			for (let colIndex = 2; colIndex < 14; colIndex++) {
-				const cellValue = row.values[0][colIndex];
-
-				if (cellValue !== '') {
-					// Get name
-					const name = extractName(cellValue);
-
-					// Get start and end times
-					const timeArr = getTime(getTimeString(colIndex), cellValue);
-					const startTime = timeArr[0];
-					const endTime = timeArr[1];
-
-					// get Time
-					const time = endTime > startTime ? endTime - startTime : endTime + 12 - startTime;
-					
-					// get OT
-					const dateObj = excelDateToJSDate(date);
-					let OT = '';
-
-					if (extractOT(cellValue) === 'OT' || dateObj.getDay() == 6 || dateObj.getDay() == 7)
-						OT = 'OT';
-
-					const value = cellValue;
-
-					rosterData.push([name, servicePoint, date, startTime, endTime, time, OT, value, address]);
-				}
-			}
-		});
-
-		return rosterData;
+		dataTable.name = tableName;
+		dataTable.getHeaderRowRange().values = 
+			[["Name", "Service Point", "Date", "Start", "End", "Time", "OT", "Value", "Address"]];
 	}
 
-	// Converts Excel date serial number to Date object
-	function excelDateToJSDate(serial) {
-		const utc_days = Math.floor(serial - 25569);
-		const utc_value = utc_days * 86400;
-		const date_info = new Date(utc_value * 1000);
+	return dataTable;
+}
 
-		return date_info;
-	}
+// Create the worksheet "Roster Data"
+function createRosterDataSheet(sheets) {
+	const wSheetName = 'Roster Data';
 
-	// Gets the date value of the rostered day from the date row above the header row of the table
-	async function getDate(context, table) {
-		const dateRange = table.getHeaderRowRange().getOffsetRange(-1, 0);
+	let rosterDataSheet = sheets.items.find(sheet => sheet.name === wSheetName);
 
-		dateRange.load('values');
-		await context.sync();
+	if (rosterDataSheet === undefined)
+		rosterDataSheet = sheets.add(wSheetName);
+
+	return rosterDataSheet;
+}
+
+// Extract data from a single roster table, i.e Monday
+function extractRosterData(table, date) {
+	const rows = table.rows.items;
+	const rosterData = [];
+	const address = '';
 	
-		return dateRange.values[0][0];
+	const STARTTIMESEMIPHORE = 'from';
+	const ENDTIMESEMIPHORE = 'til';
+
+	rows.forEach(row => {
+		const servicePoint = row.values[0][0];
+
+		for (let colIndex = 2; colIndex < 14; colIndex++) {
+			const cellValue = row.values[0][colIndex];
+
+			if (cellValue !== '') {
+				const name = extractName(cellValue);
+
+				// Get start and end times
+				const timeArray = getTime(getTimeString(colIndex), cellValue);
+				const startTime = timeArray[0];
+				const endTime = timeArray[1];
+
+				// Calculate the time (hours)
+				const time = endTime > startTime ?
+					endTime - startTime :
+					endTime + 12 - startTime;
+
+				// Get OT
+				const dateObj = excelDateToJSDate(date);
+				let ot = '';
+
+				if (extractOT(cellValue) === 'OT' || dateObj.getDay() == 6 || dateObj.getDay() == 7)
+					ot = 'OT';
+
+				const value = cellValue;
+
+				rosterData.push([
+					name, servicePoint, date, startTime, endTime, time, ot, value, address
+				]);
+			}
+		}
+	});
+
+	return rosterData;
+}
+
+// Extracts the staff name from the range
+function extractName(rangeValue) {
+	const parenthesisIndex = rangeValue.indexOf('(');
+
+	if (parenthesisIndex > 0)
+		return rangeValue.substring(0, parenthesisIndex - 1).trim();
+
+	return rangeValue.trim();
+}
+
+// Gets the start and end time from the timeString or cellValue if time is present
+function getTimeString(columnIndex) {
+	let timeString;
+
+	switch (columnIndex) {
+		case 2: 
+			timeString = "7.00-8.00";
+			break;
+		case 3: 
+			timeString = "8.00-9.00";
+			break;
+		case 4: 
+			timeString = "9.00-10.00";
+			break;
+		case 5: 
+			timeString = "10.00-11.00";
+			break;
+		case 6: 
+			timeString = "11.00-12.00";
+			break;
+		case 7: 
+			timeString = "12.00-1.00";
+			break;
+		case 8:
+			timeString = "1.00-2.00";
+			break;
+		case 9:
+			timeString = "2.00-3.00";
+			break;
+		case 10:
+			timeString = "3.00-4.00";
+			break;
+		case 11:
+			timeString = "4.00-5.00";
+			break;
+		case 12:
+			timeString = "5.00-6.00";
+			break;
+		case 13:
+			timeString = "6.00-7.00";
+			break;
+		default:
+			throw new error("Invalid column index to determine time string");	
 	}
 
-	// Gets the start and end time from the timeString or cellValue if time is present
-	function getTime(timeString, cellValue) {
-		const STARTSEMIPHORE = 'from';
+	return timeString;
+}
+
+// Gets the start and end time from the timeString or cellValue if time is present
+function getTime(timeString, cellValue) {
+	const STARTSEMIPHORE = 'from';
 		const ENDSEMIPHORE = 'til';
 		const timeStringArr = timeString.split('-');
 
@@ -196,131 +233,59 @@ async function extractData(args) {
 		}
 
 		return [+startTime, +endTime];	
-	}
+}
 
-	// Extracts the staff name from the range
-	function extractName(rangeValue) {
-		let parenthesisIndex = rangeValue.indexOf("(");
+// Converts Excel date serial number to Date object
+function excelDateToJSDate(serial) {
+	const utc_days = Math.floor(serial - 25569);
+	const utc_value = utc_days * 86400;
+	const date_info = new Date(utc_value * 1000);
 
-		if (parenthesisIndex > 0)
-			return rangeValue.substring(0, parenthesisIndex - 1).trim();
+	return date_info;
+}
 
-		return rangeValue.trim();
-	}
+// Extracts "OT" from the range value
+function extractOT(cellValue) {
+	const pattern = /\bOT\b/;
 
-	// Gets time string based of column index
-	function getTimeString(columnIndex) {
-		let timeString;
+	return cellValue.match !== null ? true : false;
+}
 
-		switch (columnIndex) {
-			case 2: 
-				timeString = "7.00-8.00";
-				break;
-			case 3: 
-				timeString = "8.00-9.00";
-				break;
-			case 4: 
-				timeString = "9.00-10.00";
-				break;
-			case 5: 
-				timeString = "10.00-11.00";
-				break;
-			case 6: 
-				timeString = "11.00-12.00";
-				break;
-			case 7: 
-				timeString = "12.00-1.00";
-				break;
-			case 8:
-				timeString = "1.00-2.00";
-				break;
-			case 9:
-				timeString = "2.00-3.00";
-				break;
-			case 10:
-				timeString = "3.00-4.00";
-				break;
-			case 11:
-				timeString = "4.00-5.00";
-				break;
-			case 12:
-				timeString = "5.00-6.00";
-				break;
-			case 13:
-				timeString = "6.00-7.00";
-				break;
-			default:
-				throw new error("Invalid column index to determine time string");	
-		}
+// Extracts the time string from the cell value (i.e. if it's not a time that starts/ends on the hour)
+function extractTimeString(rangeValue) {
+	const pattern = /(from?|from ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])([ -]?|( - )?|( -)?|(- )?)(til?|til ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])|((from?|from ?)|(til?|til ?))(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])/g;
 
-		return timeString;
-	}
+	let matches = rangeValue.match(pattern);
+	let timeString;
 
-	// Extracts the time string from the cell value (i.e. if it's not a time that starts/ends on the hour)
-	function extractTimeString(rangeValue) {
-		const pattern = /(from?|from ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])([ -]?|( - )?|( -)?|(- )?)(til?|til ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])|((from?|from ?)|(til?|til ?))(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])/g;
+	matches === null ? timeString = matches : timeString = matches[0];
 
-		let matches = rangeValue.match(pattern);
-		let timeString;
+	return timeString;
+}
 
-		matches === null ? timeString = matches : timeString = matches[0];
+// Returns true if the time string is a range (e.g. 9.00-10.00)
+function isTimeRange(timeString) {
+	let pattern = /(from?|from ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])([ -]?|( - )?|( -)?|(- )?)(til?|til ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])/g;
 
-		return timeString;
-	}
+	let matches = timeString.match(pattern);
 
-	// Returns true if the time string is a range (e.g. 9.00-10.00)
-	function isTimeRange(timeString) {
-		let pattern = /(from?|from ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])([ -]?|( - )?|( -)?|(- )?)(til?|til ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])/g;
-
-		let matches = timeString.match(pattern);
-
-		if (matches === null)
-			return false;
-
-		return true;
-	}
-
-	// Extracts "OT" from the range value
-	function extractOT(cellValue) {
-		const pattern = /\bOT\b/;
-
-		return cellValue.match !== null ? true : false;
-	}
-
-	// Converts time to a double (e.g 9.30 -> 9.5)
-	function convertTime(timeString) {
-		let timeStringArr = timeString.split('.');
-
-		let hour = timeStringArr[0] / 1;
-		let minutes = timeStringArr[1] / 60;
-
-		return hour + minutes;
-	}
-
-	async function rosterDataSheetExists(context) {
-		const sheets = context.workbook.worksheets;
-		sheets.load('items/name');
-
-		await context.sync();
-
-		if (sheets.items.find(sheet => sheet.name === "Roster Data"))
-			return true;
-
+	if (matches === null)
 		return false;
-	}
 
-	async function rosterDataTableExists(context) {
-		const tables = context.workbook.worksheets.getItem("Roster Data").tables;
-		tables.load("items/name");
-		
-		await context.sync();
-		
-		if (tables.items.find(table => table.name === "rosterData"))
-			return true;
-		
-		return false;
-	}
+	return true;
+}
 
+// Converts time to a double (e.g 9.30 -> 9.5)
+function convertTime(timeString) {
+	let timeStringArr = timeString.split('.');
+
+	let hour = timeStringArr[0] / 1;
+	let minutes = timeStringArr[1] / 60;
+
+	return hour + minutes;
+}
+
+async function extractData2(args) {
 	// Gets a list of service points. (NOT USED)
 	async function extractServicePoints(context) {
 		const rosterSheet = context.workbook.worksheets.getItem("Roster");
