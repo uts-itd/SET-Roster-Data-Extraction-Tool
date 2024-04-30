@@ -47,13 +47,10 @@ async function extractData(args) {
 
 		// create Roster Data Sheet if it doesn't exist
 		createRosterDataSheet(sheets).activate();
+
 		// create rosterData table if it doesn't exist
 		const rosterDataTable = createRosterDataTable(tables);
-
-		rosterDataTable.rows.deleteRows(rosterDataTable.rows.items);
-
 		const tableNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
 		let rosterData = [];
 
 		tableNames.forEach(tableName => {
@@ -84,6 +81,8 @@ function createRosterDataTable(tables) {
 		dataTable.name = tableName;
 		dataTable.getHeaderRowRange().values = 
 			[["Name", "Service Point", "Date", "Start", "End", "Time", "OT", "Value", "Address"]];
+	} else {
+		dataTable.rows.deleteRows(dataTable.rows.items);
 	}
 
 	return dataTable;
