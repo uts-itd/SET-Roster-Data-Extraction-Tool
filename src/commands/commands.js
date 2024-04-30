@@ -29,7 +29,7 @@ function action(event) {
 }
 
 // My SRDET stuff here:
-async function extractData(args) {
+async function extractData(event) {
 	await Excel.run(async (context) => {
 		const names = context.workbook.names;
 		const tables = context.workbook.tables;
@@ -66,7 +66,7 @@ async function extractData(args) {
 		rosterDataTable.getRange().format.autofitColumns();
 		rosterDataTable.columns.getItem('Date').getDataBodyRange().numberFormat = 'dd/mm/yyyy';
 
-		args.completed();
+		event.completed();
 	});
 }
 
