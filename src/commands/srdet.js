@@ -1,4 +1,8 @@
 const SRDET = (() => {
+	/* 
+	 * Returns the name from a given cell value, removing any additional information found
+	 * inside the brackets. i.e. John Smith (9am-9.30am) => John Smith
+	 */
 	function extractName(cellValue) {
 		const parenthesisIndex = cellValue.indexOf('(');
 
@@ -8,6 +12,10 @@ const SRDET = (() => {
 		return cellValue.trim();
 	}
 
+	/*
+	 * Returns the time string from a given cell value.
+	 * e.g. John Smith (9.30am-10am) => 9.30am-10am
+	 */
 	function extractTime(cellValue) {
 		const pattern = /(from?|from ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])([ -]?|( - )?|( -)?|(- )?)(til?|til ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])|((from?|from ?)|(til?|til ?))(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])/g;
 
@@ -19,12 +27,19 @@ const SRDET = (() => {
 		return timeString;
 	}
 
+	/*
+	 * Returns true or false depending if it can find the string "OT".
+	 */
 	function extractOT(cellValue) {
 		const pattern = /\bOT\b/;
 
 		return cellValue.match(pattern) !== null ? true : false;
 	}
 
+	/*
+	 * Returns true if the timeString is a range (i.e. 9.30-10)
+	 * Returns false if the timeString is not a range (i.e. 9.30)
+	 */
 	function isTimeRange(timeString) {
 		let pattern = /(from?|from ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])([ -]?|( - )?|( -)?|(- )?)(til?|til ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])/g;
 
@@ -36,6 +51,9 @@ const SRDET = (() => {
 		return true;
 	}
 
+	/*
+	 * Returns a string that can be used for calculating the number of hours. e.g. 9.30 => 9.5
+	 */
 	function convertTime(timeString) {
 		let timeStringArr = timeString.split('.');
 
@@ -45,6 +63,9 @@ const SRDET = (() => {
 		return hour + minutes;
 	}
 
+	/*
+	 * Returns a time range string corresponding to the cell column index
+	 */
 	function getTimeString(columnIndex) {
 		const timeStrings = new Map([
 			[3, "8.00-9.00"],
@@ -81,6 +102,9 @@ const SRDET = (() => {
 		return timeMap;
 	}
 
+	/*
+	 * Returns a date object converted from the Excel date serial number
+	 */
 	function excelDateToJSDate(serial) {
 		const utc_days = Math.floor(serial - 25569);
 		const utc_value = utc_days * 86400;
@@ -117,7 +141,6 @@ const SRDET = (() => {
 
 		return [+startTime, +endTime];	
 	}
-
 
 	return {
 		extractName,
