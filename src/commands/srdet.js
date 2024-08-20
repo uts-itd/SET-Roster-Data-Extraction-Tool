@@ -17,7 +17,7 @@ const SRDET = (() => {
 	 * e.g. John Smith (9.30am-10am) => 9.30am-10am
 	 */
 	function extractTime(cellValue) {
-		const pattern = /(from?|from ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])([ -]?|( - )?|( -)?|(- )?)(til?|til ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])|((from?|from ?)|(til?|til ?))(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])/g;
+		const pattern = /(from?|from ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])([ -]?|( - )?|( -)?|(- )?)((ti[l]{1,2})?|(ti[l]{1,2} )?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])|((from?|from ?)|((ti[l]{1,2})?|(ti[l]{1,2} )?))(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])/g;
 
 		let matches = cellValue.match(pattern);
 		let timeString;
@@ -41,7 +41,7 @@ const SRDET = (() => {
 	 * Returns false if the timeString is not a range (i.e. 9.30)
 	 */
 	function isTimeRange(timeString) {
-		let pattern = /(from?|from ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])([ -]?|( - )?|( -)?|(- )?)(til?|til ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])/g;
+		let pattern = /(from?|from ?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])([ -]?|( - )?|( -)?|(- )?)((ti[l]{1,2})?|(ti[l]{1,2} )?)?(2[0-3]|[01]?[0-9])[\.\:]([0-5][0-9])/g;
 
 		let matches = timeString.match(pattern);
 
