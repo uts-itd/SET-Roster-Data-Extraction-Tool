@@ -5,7 +5,7 @@ describe('extractName() takes a string value of from a roster cell and returns t
 
 	const extractedName = SRDET.extractName(nameString);
 
-	test('Name extracted is "John Doe"', () => {
+	test('Name extracted should be "John Doe"', () => {
 		expect(extractedName).toBe('John Doe');
 	});
 });
@@ -16,7 +16,9 @@ describe('extractTime() takes a string value from a roster cell and returns the 
 		'John Doe (til 9.30)',
 		'John Doe (from 9.15 - til 9.45)',
 		'John Doe (9.15-9.45)',
-		'John Doe'
+		'John Doe',
+		'Selen K (from 11:30)',
+		'John Doe (till 11.20)'
 	];
 
 	const extractedTimes = nameStrings.map(str => SRDET.extractTime(str));
@@ -39,6 +41,14 @@ describe('extractTime() takes a string value from a roster cell and returns the 
 
 	test('Time extracted from "John Doe" is Null', () => {
 		expect(extractedTimes[4]).toBeNull();
+	});
+
+	test('Time extracted from "John Doe (from 11:30)" should be "from 11:30"', () => {
+		expect(extractedTimes[5]).toBe('from 11:30');
+	});
+
+	test('Time extracted from "John Doe (till 11.20)" should be "till 11.20"', () => {
+		expect(extractedTimes[6]).toBe('till 11.20');
 	});
 });
 
@@ -83,6 +93,30 @@ describe('convertTime() converts a time string to double', () => {
 
 	test('Converts "9.30" to 9.5', () => {
 		expect(timeDbl).toBe(9.5);
+	});
+});
+
+describe('getTime() will get the time array based off the input', () => {
+	test('result should be array with 11 in [0] and 12 in [1]', () => {
+		const cellValue = 'John Doe';
+		const timeString = '11.00-12.00';
+
+		const result = SRDET.getTime(timeString, cellValue);
+
+		expect(result[0]).toBe(11);
+		expect(result[1]).toBe(12);
+	});
+});
+
+describe('getTime() should get the time based off the cell value', () => {
+	const cellValue = 'John Doe (from 11:30)';
+	const timeString = '11.00-12.00';
+
+	const result = SRDET.getTime(timeString, cellValue);
+	
+	test('getTime()2', () => {
+		expect(result[0]).toBe(11.5);
+		expect(result[1]).toBe(12);
 	});
 });
 
