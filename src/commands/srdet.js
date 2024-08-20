@@ -113,20 +113,33 @@ const SRDET = (() => {
 		return date_info;
 	}
 
+	function cleanTimeStringOverride(timeStringOverride) {
+		let cleanedString = timeStringOverride.replace('until', 'til');
+		cleanedString = cleanedString.replace('till', 'til');
+		cleanedString = cleanedString.replace(':', '.');
+
+		return cleanedString;
+	}
+
 	// Gets the start and end time from the timeString or cellValue if time is present
 	function getTime(timeString, cellValue) {
-		const STARTSEMIPHORE = 'from';
-		const ENDSEMIPHORE = 'til';
 		const timeStringArr = timeString.split('-');
 
 		// Set start and end time based of column header (timeString)
-		let startTime = timeStringArr[0].replace(STARTSEMIPHORE, '').trim();
-		let endTime = timeStringArr[1].replace(ENDSEMIPHORE, '').trim();
+		let startTime = timeStringArr[0].trim();
+		let endTime = timeStringArr[1].trim();
 
 		// Checks if there are any time override values in the cells (e.g. John Doe (from 9.30)
-		const timeStringOverride = SRDET.extractTime(cellValue);
+		let timeStringOverride = SRDET.extractTime(cellValue);
+		
 		
 		if (timeStringOverride !== null) {
+			const STARTSEMIPHORE = 'from';
+			const ENDSEMIPHORE = 'til';
+
+			// clean the timeStringOverride (so it's consistent - e.g. hhmm delimiter to .)
+			timeStringOverride = cleanTimeStringOverride(timeStringOverride);
+
 			const timeStringOverrideArr = timeStringOverride.split('-');
 
 			// [from 9.30, til 3.30], [from 9.30], [til 3.30]
