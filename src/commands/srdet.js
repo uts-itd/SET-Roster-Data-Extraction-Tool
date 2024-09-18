@@ -13,7 +13,7 @@ const SRDET = (() => {
 	}
 
 	/*
-	 * Returns the time string from a given cell value.
+	 * Returns the time override string from a given cell value.
 	 * e.g. John Smith (9.30am-10am) => 9.30am-10am
 	 */
 	function extractTime(cellValue) {
