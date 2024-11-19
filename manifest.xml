@@ -2,15 +2,15 @@
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
   <Id>b395362a-f435-436f-b9b9-3e9552ff0967</Id>
   <Version>1.0.0.0</Version>
-  <ProviderName>Contoso</ProviderName>
+  <ProviderName>Lifetime Learner Experience Unit</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="SET Roster Data Extraction Tool"/>
   <Description DefaultValue="A tool to extract roster data into a table."/>
   <IconUrl DefaultValue="https://localhost:3000/assets/UTS_logo_web-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/UTS_logo_web-64.png"/>
-  <SupportUrl DefaultValue="https://www.contoso.com/help"/>
+  <SupportUrl DefaultValue="https://studentutsedu.sharepoint.com/sites/SET-roster-data-extraction-tool"/>
   <AppDomains>
-    <AppDomain>https://www.contoso.com</AppDomain>
+    <AppDomain>https://uts-itd.github.io</AppDomain>
   </AppDomains>
   <Hosts>
     <Host Name="Workbook"/>
